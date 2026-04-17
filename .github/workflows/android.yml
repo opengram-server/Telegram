@@ -1,0 +1,129 @@
+name: Android (universal APK)
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+  workflow_dispatch:
+  release:
+    types: [created]
+
+jobs:
+  build:
+    name: Build universal APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout.
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up JDK 17.
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Set up Android SDK.
+        uses: android-actions/setup-android@v3
+        with:
+          packages: 'platforms;android-35 build-tools;35.0.0 ndk;21.4.7075529 cmake;3.10.2.4988404'
+
+      - name: Apply Opengram RSA public key + fingerprint.
+        env:
+          OPENGRAM_PUBKEY: ${{ secrets.OPENGRAM_PUBKEY }}
+        run: |
+          if [ -z "$OPENGRAM_PUBKEY" ]; then
+            echo "::warning::OPENGRAM_PUBKEY secret is not set — APK won't connect to the server."
+          else
+            printf '%s\n' "$OPENGRAM_PUBKEY" > pubkey.asc
+            python3 -m pip install --upgrade pip
+            python3 -m pip install cryptography
+            python3 _apply_pubkey.py
+            echo "Public key + fingerprint applied."
+          fi
+
+      - name: Apply text rebrand.
+        run: |
+          python3 _rename_strings.py
+
+      - name: Generate signing keystore.
+        env:
+          OPENGRAM_KEYSTORE_BASE64: ${{ secrets.OPENGRAM_KEYSTORE_BASE64 }}
+        run: |
+          mkdir -p TMessagesProj/config
+          if [ -n "$OPENGRAM_KEYSTORE_BASE64" ]; then
+            echo "$OPENGRAM_KEYSTORE_BASE64" | base64 -d > TMessagesProj/config/release.keystore
+            echo "Custom keystore loaded from secret."
+          else
+            echo "::warning::OPENGRAM_KEYSTORE_BASE64 not set — generating throwaway keystore."
+            keytool -genkey -v \
+              -keystore TMessagesProj/config/release.keystore \
+              -alias androidkey \
+              -keyalg RSA -keysize 2048 -validity 10000 \
+              -storepass android -keypass android \
+              -dname "CN=Opengram, OU=Opengram, O=Opengram, L=Internet, ST=Internet, C=RU"
+          fi
+
+      - name: Stub google-services.json (no Firebase for standalone).
+        run: |
+          mkdir -p TMessagesProj_App/src
+          cat > TMessagesProj_App/google-services.json <<'JSON'
+          {
+            "project_info": {
+              "project_number": "0",
+              "project_id": "opengram-stub",
+              "storage_bucket": "stub.appspot.com"
+            },
+            "client": [{
+              "client_info": {
+                "mobilesdk_app_id": "1:0:android:0",
+                "android_client_info": { "package_name": "me.opengra.messenger" }
+              },
+              "oauth_client": [],
+              "api_key": [{ "current_key": "stub" }],
+              "services": { "appinvite_service": { "other_platform_oauth_client": [] } }
+            }],
+            "configuration_version": "1"
+          }
+          JSON
+
+      - name: Gradle build (Standalone, universal afat).
+        run: |
+          chmod +x gradlew
+          ./gradlew :TMessagesProj_AppStandalone:assembleAfatStandalone --no-daemon --stacktrace
+        env:
+          GRADLE_OPTS: -Xmx4g -Dfile.encoding=UTF-8
+
+      - name: Locate built APK.
+        id: locate
+        run: |
+          APK=$(find TMessagesProj_AppStandalone/build/outputs/apk -name "*.apk" | head -1)
+          if [ -z "$APK" ]; then
+            echo "::error::APK not found"
+            find . -name "*.apk" 2>/dev/null
+            exit 1
+          fi
+          echo "APK_PATH=$APK" >> $GITHUB_ENV
+          echo "APK at: $APK ($(du -h "$APK" | cut -f1))"
+
+      - name: Rename APK.
+        run: |
+          mkdir -p artifacts
+          cp "$APK_PATH" "artifacts/Opengram-android-universal.apk"
+
+      - name: Upload artifact.
+        uses: actions/upload-artifact@v4
+        with:
+          name: opengram-android-universal
+          path: artifacts/*.apk
+          retention-days: 30
+
+      - name: Attach to release.
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/*.apk
