@@ -60,6 +60,7 @@ jobs:
             echo "Custom keystore loaded from secret."
           else
             echo "::warning::OPENGRAM_KEYSTORE_BASE64 not set — generating throwaway keystore."
+            rm -f TMessagesProj/config/release.keystore
             keytool -genkey -v \
               -keystore TMessagesProj/config/release.keystore \
               -alias androidkey \
