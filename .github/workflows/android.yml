@@ -71,9 +71,7 @@ jobs:
 
       - name: Stub google-services.json (no Firebase for standalone).
         run: |
-          mkdir -p TMessagesProj_App/src
-          cat > TMessagesProj_App/google-services.json <<'JSON'
-          {
+          GOOGLE_SERVICES_JSON='{
             "project_info": {
               "project_number": "0",
               "project_id": "opengram-stub",
@@ -100,8 +98,17 @@ jobs:
               }
             ],
             "configuration_version": "1"
-          }
-          JSON
+          }'
+
+          # Кладём во все возможные модули, где Gradle может его искать
+          for DIR in \
+            TMessagesProj_App \
+            TMessagesProj_AppStandalone \
+            TMessagesProj; do
+            mkdir -p "$DIR"
+            echo "$GOOGLE_SERVICES_JSON" > "$DIR/google-services.json"
+            echo "Written to $DIR/google-services.json"
+          done
 
       - name: Gradle build (Standalone, universal afat).
         run: |
