@@ -79,15 +79,26 @@ jobs:
               "project_id": "opengram-stub",
               "storage_bucket": "stub.appspot.com"
             },
-            "client": [{
-              "client_info": {
-                "mobilesdk_app_id": "1:0:android:0",
-                "android_client_info": { "package_name": "me.opengra.messenger" }
+            "client": [
+              {
+                "client_info": {
+                  "mobilesdk_app_id": "1:0:android:0",
+                  "android_client_info": { "package_name": "me.opengra.messenger" }
+                },
+                "oauth_client": [],
+                "api_key": [{ "current_key": "stub" }],
+                "services": { "appinvite_service": { "other_platform_oauth_client": [] } }
               },
-              "oauth_client": [],
-              "api_key": [{ "current_key": "stub" }],
-              "services": { "appinvite_service": { "other_platform_oauth_client": [] } }
-            }],
+              {
+                "client_info": {
+                  "mobilesdk_app_id": "1:0:android:1",
+                  "android_client_info": { "package_name": "me.opengra.messenger.web" }
+                },
+                "oauth_client": [],
+                "api_key": [{ "current_key": "stub" }],
+                "services": { "appinvite_service": { "other_platform_oauth_client": [] } }
+              }
+            ],
             "configuration_version": "1"
           }
           JSON
