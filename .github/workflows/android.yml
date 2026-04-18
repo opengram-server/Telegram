@@ -69,47 +69,6 @@ jobs:
               -dname "CN=Opengram, OU=Opengram, O=Opengram, L=Internet, ST=Internet, C=RU"
           fi
 
-      - name: Stub google-services.json (no Firebase for standalone).
-        run: |
-          GOOGLE_SERVICES_JSON='{
-            "project_info": {
-              "project_number": "0",
-              "project_id": "opengram-stub",
-              "storage_bucket": "stub.appspot.com"
-            },
-            "client": [
-              {
-                "client_info": {
-                  "mobilesdk_app_id": "1:0:android:0",
-                  "android_client_info": { "package_name": "me.opengra.messenger" }
-                },
-                "oauth_client": [],
-                "api_key": [{ "current_key": "stub" }],
-                "services": { "appinvite_service": { "other_platform_oauth_client": [] } }
-              },
-              {
-                "client_info": {
-                  "mobilesdk_app_id": "1:0:android:1",
-                  "android_client_info": { "package_name": "me.opengra.messenger.web" }
-                },
-                "oauth_client": [],
-                "api_key": [{ "current_key": "stub" }],
-                "services": { "appinvite_service": { "other_platform_oauth_client": [] } }
-              }
-            ],
-            "configuration_version": "1"
-          }'
-
-          # Кладём во все возможные модули, где Gradle может его искать
-          for DIR in \
-            TMessagesProj_App \
-            TMessagesProj_AppStandalone \
-            TMessagesProj; do
-            mkdir -p "$DIR"
-            echo "$GOOGLE_SERVICES_JSON" > "$DIR/google-services.json"
-            echo "Written to $DIR/google-services.json"
-          done
-
       - name: Gradle build (Standalone, universal afat).
         run: |
           chmod +x gradlew
