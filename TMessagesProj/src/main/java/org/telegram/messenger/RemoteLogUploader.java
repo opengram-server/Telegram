@@ -9,6 +9,8 @@ import java.io.OutputStream;
 import java.io.RandomAccessFile;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.UUID;
 
 public final class RemoteLogUploader {
@@ -19,6 +21,7 @@ public final class RemoteLogUploader {
 
     private static HandlerThread thread;
     private static Handler handler;
+    private static File dir;
     private static File file;
     private static long offset;
     private static String deviceTag;
@@ -26,6 +29,7 @@ public final class RemoteLogUploader {
     public static synchronized void start(File logFile) {
         if (thread != null || logFile == null) return;
         file = logFile;
+        dir = logFile.getParentFile();
         offset = 0;
         deviceTag = (Build.MANUFACTURER + "-" + Build.MODEL + "-" + UUID.randomUUID().toString().substring(0, 8))
                 .replace(' ', '_').replaceAll("[^A-Za-z0-9_.\\-]", "");
@@ -39,12 +43,25 @@ public final class RemoteLogUploader {
         @Override
         public void run() {
             try {
+                pickLatestFile();
                 uploadChunk();
             } catch (Throwable ignored) {
             }
             if (handler != null) handler.postDelayed(this, POLL_INTERVAL_MS);
         }
     };
+
+    private static void pickLatestFile() {
+        if (dir == null || !dir.isDirectory()) return;
+        File[] files = dir.listFiles(f -> f.isFile() && f.getName().endsWith(".txt") && !f.getName().contains("_mtproto") && !f.getName().contains("_tonlib"));
+        if (files == null || files.length == 0) return;
+        Arrays.sort(files, Comparator.comparingLong(File::lastModified).reversed());
+        File latest = files[0];
+        if (file == null || !latest.getAbsolutePath().equals(file.getAbsolutePath())) {
+            file = latest;
+            offset = 0;
+        }
+    }
 
     private static void uploadChunk() throws Exception {
         if (file == null || !file.exists()) return;
