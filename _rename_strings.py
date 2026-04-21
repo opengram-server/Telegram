@@ -1,7 +1,5 @@
 import os
 import re
-import json
-import glob
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 RES_DIR = os.path.join(ROOT, "TMessagesProj", "src", "main", "res")
@@ -27,13 +25,6 @@ REGEX_REPLACEMENTS = [
     (re.compile(r"\bTelegram\b"), "Opengram"),
     (re.compile(r"\btelegram\b"), "opengram"),
 ]
-
-# Маппинг package names для google-services.json
-PACKAGE_NAME_MAP = {
-    "org.telegram.messenger":      "me.opengra.messenger",
-    "org.telegram.messenger.beta": "me.opengra.messenger.beta",
-    "org.telegram.messenger.web":  "me.opengra.messenger.web",
-}
 
 # <string name="..." formatted="false">VALUE</string>
 STRING_RE = re.compile(
@@ -71,36 +62,6 @@ def process_file(path: str) -> int:
     return 1
 
 
-def patch_google_services(path: str) -> bool:
-    """Заменяет package_name org.telegram.* -> me.opengra.* в google-services.json."""
-    with open(path, "r", encoding="utf-8") as f:
-        data = json.load(f)
-
-    changed = False
-    clients = data.get("client", [])
-    for client in clients:
-        client_info = client.get("client_info", {})
-        android_info = client_info.get("android_client_info", {})
-        pkg = android_info.get("package_name", "")
-        if pkg in PACKAGE_NAME_MAP:
-            android_info["package_name"] = PACKAGE_NAME_MAP[pkg]
-            changed = True
-
-    if changed:
-        backup_path = path + ".bak"
-        if not os.path.exists(backup_path):
-            with open(path, "r", encoding="utf-8") as f:
-                pass  # already read above
-            import shutil
-            shutil.copy2(path, backup_path)
-
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=2, ensure_ascii=False)
-        print(f"patched google-services.json: {os.path.relpath(path, ROOT)}")
-
-    return changed
-
-
 def main():
     total_files = 0
     total_changed = 0
@@ -117,25 +78,12 @@ def main():
             total_changed += 1
             print(f"changed: {os.path.relpath(strings_file, ROOT)}")
 
-    # Патчим все google-services.json в проекте
-    gs_files = glob.glob(os.path.join(ROOT, "**/google-services.json"), recursive=True)
-    gs_patched = 0
-    for gs_path in gs_files:
-        if gs_path.endswith(".bak"):
-            continue
-        try:
-            if patch_google_services(gs_path):
-                gs_patched += 1
-        except Exception as e:
-            print(f"warning: could not patch {gs_path}: {e}")
-
     # Verify main file
     main_file = os.path.join(RES_DIR, "values", "strings.xml")
     with open(main_file, "r", encoding="utf-8") as f:
         new = f.read()
 
     print(f"\nProcessed: {total_files} strings files, changed: {total_changed}")
-    print(f"Patched google-services.json: {gs_patched}")
     print(f"Telegram remaining in values/strings.xml: {new.count('Telegram')}")
     print(f"Opengram count in values/strings.xml:    {new.count('Opengram')}")
 
