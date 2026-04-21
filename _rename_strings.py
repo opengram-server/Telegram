@@ -1,8 +1,18 @@
+import copy
+import json
 import os
 import re
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 RES_DIR = os.path.join(ROOT, "TMessagesProj", "src", "main", "res")
+GS_PATH = os.path.join(ROOT, "TMessagesProj", "google-services.json")
+
+# Маппинг package_name original -> Opengram (добавляем клиентов, не заменяем)
+PACKAGE_NAME_MAP = {
+    "org.telegram.messenger":      "me.opengra.messenger",
+    "org.telegram.messenger.beta": "me.opengra.messenger.beta",
+    "org.telegram.messenger.web":  "me.opengra.messenger.web",
+}
 
 # Паттерны замены (применяются к ЗНАЧЕНИЯМ <string>, не к именам)
 REPLACEMENTS = [
@@ -62,6 +72,41 @@ def process_file(path: str) -> int:
     return 1
 
 
+def add_opengram_clients_to_google_services(path: str) -> int:
+    """Добавляет клиентов для me.opengra.* рядом с org.telegram.* (не заменяя).
+    Плагин google-services ищет клиента по applicationId / namespace — нужно
+    чтобы в JSON были оба варианта пакетов."""
+    if not os.path.isfile(path):
+        return 0
+    with open(path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    existing = set()
+    for c in data.get("client", []):
+        pkg = c.get("client_info", {}).get("android_client_info", {}).get("package_name")
+        if pkg:
+            existing.add(pkg)
+
+    added = 0
+    new_clients = []
+    for client in data.get("client", []):
+        pkg = client.get("client_info", {}).get("android_client_info", {}).get("package_name", "")
+        if pkg in PACKAGE_NAME_MAP:
+            new_pkg = PACKAGE_NAME_MAP[pkg]
+            if new_pkg not in existing:
+                dup = copy.deepcopy(client)
+                dup["client_info"]["android_client_info"]["package_name"] = new_pkg
+                new_clients.append(dup)
+                existing.add(new_pkg)
+                added += 1
+
+    if added:
+        data.setdefault("client", []).extend(new_clients)
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
+    return added
+
+
 def main():
     total_files = 0
     total_changed = 0
@@ -83,7 +128,9 @@ def main():
     with open(main_file, "r", encoding="utf-8") as f:
         new = f.read()
 
+    gs_added = add_opengram_clients_to_google_services(GS_PATH)
     print(f"\nProcessed: {total_files} strings files, changed: {total_changed}")
+    print(f"google-services.json: added {gs_added} Opengram client(s)")
     print(f"Telegram remaining in values/strings.xml: {new.count('Telegram')}")
     print(f"Opengram count in values/strings.xml:    {new.count('Opengram')}")
 
