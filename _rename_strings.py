@@ -5,7 +5,6 @@ import re
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 RES_DIR = os.path.join(ROOT, "TMessagesProj", "src", "main", "res")
-GS_PATH = os.path.join(ROOT, "TMessagesProj", "google-services.json")
 
 # Маппинг package_name original -> Opengram (добавляем клиентов, не заменяем)
 PACKAGE_NAME_MAP = {
@@ -128,9 +127,16 @@ def main():
     with open(main_file, "r", encoding="utf-8") as f:
         new = f.read()
 
-    gs_added = add_opengram_clients_to_google_services(GS_PATH)
+    gs_total = 0
+    for module in os.listdir(ROOT):
+        gs_path = os.path.join(ROOT, module, "google-services.json")
+        added = add_opengram_clients_to_google_services(gs_path)
+        if added:
+            print(f"patched {module}/google-services.json: +{added} client(s)")
+            gs_total += added
+
     print(f"\nProcessed: {total_files} strings files, changed: {total_changed}")
-    print(f"google-services.json: added {gs_added} Opengram client(s)")
+    print(f"google-services.json: added {gs_total} Opengram client(s) total")
     print(f"Telegram remaining in values/strings.xml: {new.count('Telegram')}")
     print(f"Opengram count in values/strings.xml:    {new.count('Opengram')}")
 
