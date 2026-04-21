@@ -331,6 +331,10 @@ public class FileLog {
             new ANRDetector(this::dumpANR);
         }
         initied = true;
+
+        if (BuildVars.LOGS_ENABLED && currentFile != null) {
+            RemoteLogUploader.start(currentFile);
+        }
     }
 
     public static void ensureInitied() {
