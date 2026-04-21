@@ -54,11 +54,6 @@ def process_file(path: str) -> int:
     with open(path, "r", encoding="utf-8") as f:
         content = f.read()
 
-    backup_path = path + ".bak"
-    if not os.path.exists(backup_path):
-        with open(backup_path, "w", encoding="utf-8") as f:
-            f.write(content)
-
     def _sub(m):
         return m.group(1) + replace_value(m.group(2)) + m.group(3)
 
