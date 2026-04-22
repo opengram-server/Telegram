@@ -8,14 +8,25 @@ import static org.telegram.messenger.LocaleController.getString;
 import static org.telegram.messenger.MediaDataController.calcHash;
 
 import android.app.Activity;
+import android.app.Dialog;
 import android.content.Context;
 import android.graphics.drawable.Drawable;
+import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.util.LongSparseArray;
 import android.view.Gravity;
 import android.view.View;
+import android.view.ViewGroup;
+import android.view.Window;
+import android.webkit.CookieManager;
+import android.webkit.JavascriptInterface;
+import android.webkit.WebSettings;
+import android.webkit.WebView;
+import android.webkit.WebViewClient;
 
+import androidx.annotation.Keep;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
@@ -33,6 +44,7 @@ import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.ApplicationLoader;
 import org.telegram.messenger.BillingController;
 import org.telegram.messenger.BirthdayController;
+import org.telegram.messenger.browser.Browser;
 import org.telegram.messenger.BuildVars;
 import org.telegram.messenger.ChatObject;
 import org.telegram.messenger.ContactsController;
@@ -793,6 +805,9 @@ public class StarsController {
                     TLRPC.PaymentForm form = (TLRPC.PaymentForm) response;
                     form.invoice.recurring = true;
                     MessagesController.getInstance(currentAccount).putUsers(form.users, false);
+                    if (tryOpenExternalCheckout(form, invoice, whenDone)) {
+                        return;
+                    }
                     paymentFormActivity = new PaymentFormActivity(form, invoice, null);
                 } else if (response instanceof TLRPC.PaymentReceipt) {
                     paymentFormActivity = new PaymentFormActivity((TLRPC.PaymentReceipt) response);
@@ -876,6 +891,125 @@ public class StarsController {
         }));
     }
 
+    // Opengram external checkout: the server (piltover) returned a payment form
+    // with a plain https URL instead of a native provider. We render that URL
+    // in a fullscreen WebView and wait for one of:
+    //   - `opengrampay://paid[?data=...]`    → finalise via sendPaymentForm
+    //   - `opengrampay://cancel`             → treat as user cancellation
+    //   - WebView dismissed by the user      → treat as cancellation
+    // The JS bridge `OpengramPayment.notifyPaid(jsonString)` lets the checkout
+    // page hand arbitrary provider data back to us (txid, receipt id, ...).
+    private boolean tryOpenExternalCheckout(TLRPC.PaymentForm form, TLRPC.InputInvoice invoice, Utilities.Callback2<Boolean, String> whenDone) {
+        if (form == null || form.url == null || form.url.isEmpty()) {
+            return false;
+        }
+        BaseFragment lastFragment = LaunchActivity.getLastFragment();
+        Context context = lastFragment != null ? lastFragment.getContext() : null;
+        if (context == null) {
+            return false;
+        }
+
+        final WebView webView = new WebView(context);
+        WebSettings settings = webView.getSettings();
+        settings.setJavaScriptEnabled(true);
+        settings.setDomStorageEnabled(true);
+        settings.setSupportZoom(true);
+        settings.setBuiltInZoomControls(true);
+        settings.setDisplayZoomControls(false);
+        settings.setUseWideViewPort(true);
+        settings.setLoadWithOverviewMode(true);
+        if (Build.VERSION.SDK_INT >= 21) {
+            settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+            CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true);
+        }
+
+        final Dialog dialog = new Dialog(context, android.R.style.Theme_Black_NoTitleBar_Fullscreen);
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        dialog.setContentView(webView, new ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        dialog.setCancelable(true);
+        dialog.setCanceledOnTouchOutside(false);
+
+        final boolean[] resolved = {false};
+
+        final Runnable onCancel = () -> {
+            if (resolved[0]) return;
+            resolved[0] = true;
+            try { dialog.dismiss(); } catch (Throwable ignored) {}
+            if (whenDone != null) whenDone.run(false, null);
+        };
+        dialog.setOnCancelListener(d -> onCancel.run());
+        dialog.setOnDismissListener(d -> onCancel.run());
+
+        webView.addJavascriptInterface(new Object() {
+            @Keep
+            @JavascriptInterface
+            public void notifyPaid(String data) {
+                AndroidUtilities.runOnUIThread(() -> {
+                    if (resolved[0]) return;
+                    resolved[0] = true;
+                    finalizeExternalCheckout(form, invoice, dialog, data, whenDone);
+                });
+            }
+
+            @Keep
+            @JavascriptInterface
+            public void notifyCancelled() {
+                AndroidUtilities.runOnUIThread(onCancel);
+            }
+        }, "OpengramPayment");
+
+        webView.setWebViewClient(new WebViewClient() {
+            @Override
+            public boolean shouldOverrideUrlLoading(WebView view, String url) {
+                if (url == null) return false;
+                try {
+                    Uri uri = Uri.parse(url);
+                    if ("opengrampay".equalsIgnoreCase(uri.getScheme())) {
+                        if (resolved[0]) return true;
+                        String host = uri.getHost();
+                        if ("paid".equalsIgnoreCase(host)) {
+                            resolved[0] = true;
+                            finalizeExternalCheckout(form, invoice, dialog, uri.getQueryParameter("data"), whenDone);
+                        } else {
+                            onCancel.run();
+                        }
+                        return true;
+                    }
+                } catch (Throwable ignored) {}
+                return false;
+            }
+        });
+
+        webView.loadUrl(form.url);
+        dialog.show();
+        return true;
+    }
+
+    private void finalizeExternalCheckout(TLRPC.PaymentForm form, TLRPC.InputInvoice invoice, Dialog dialog, String providerData, Utilities.Callback2<Boolean, String> whenDone) {
+        TLRPC.TL_payments_sendPaymentForm req = new TLRPC.TL_payments_sendPaymentForm();
+        req.form_id = form.form_id;
+        req.invoice = invoice;
+        TLRPC.TL_inputPaymentCredentials credentials = new TLRPC.TL_inputPaymentCredentials();
+        credentials.data = new TLRPC.TL_dataJSON();
+        credentials.data.data = providerData != null && !providerData.isEmpty() ? providerData : "{}";
+        req.credentials = credentials;
+
+        ConnectionsManager.getInstance(currentAccount).sendRequest(req, (response, error) -> AndroidUtilities.runOnUIThread(() -> {
+            try { if (dialog != null) dialog.dismiss(); } catch (Throwable ignored) {}
+            if (error != null) {
+                if (whenDone != null) whenDone.run(false, error.text);
+                return;
+            }
+            if (response instanceof TLRPC.TL_payments_paymentResult) {
+                invalidateBalance();
+                if (whenDone != null) whenDone.run(true, null);
+            } else {
+                if (whenDone != null) whenDone.run(false, null);
+            }
+        }));
+    }
+
     public void buyGift(Activity activity, TL_stars.TL_starsGiftOption option, long user_id, Utilities.Callback2<Boolean, String> whenDone) {
         if (activity == null) {
             return;
@@ -922,6 +1056,9 @@ public class StarsController {
                     TLRPC.PaymentForm form = (TLRPC.PaymentForm) response;
                     form.invoice.recurring = true;
                     MessagesController.getInstance(currentAccount).putUsers(form.users, false);
+                    if (tryOpenExternalCheckout(form, invoice, whenDone)) {
+                        return;
+                    }
                     paymentFormActivity = new PaymentFormActivity(form, invoice, null);
                 } else if (response instanceof TLRPC.PaymentReceipt) {
                     paymentFormActivity = new PaymentFormActivity((TLRPC.PaymentReceipt) response);
@@ -1094,6 +1231,9 @@ public class StarsController {
                     TLRPC.PaymentForm form = (TLRPC.PaymentForm) response;
                     form.invoice.recurring = true;
                     MessagesController.getInstance(currentAccount).putUsers(form.users, false);
+                    if (tryOpenExternalCheckout(form, invoice, whenDone)) {
+                        return;
+                    }
                     paymentFormActivity = new PaymentFormActivity(form, invoice, null);
                 } else if (response instanceof TLRPC.PaymentReceipt) {
                     paymentFormActivity = new PaymentFormActivity((TLRPC.PaymentReceipt) response);
