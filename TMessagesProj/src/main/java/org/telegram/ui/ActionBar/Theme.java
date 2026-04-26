@@ -2618,10 +2618,10 @@ public class Theme {
                     themeAccent.myMessagesGradientAccentColor3 = 0xff213322;
                     if (name.equals("Night")) {
                         themeAccent.patternIntensity = -0.57f;
-                        themeAccent.backgroundOverrideColor = 0xff6c7fa6;
-                        themeAccent.backgroundGradientOverrideColor1 = 0xff2e344b;
-                        themeAccent.backgroundGradientOverrideColor2 = 0xff7874a7;
-                        themeAccent.backgroundGradientOverrideColor3 = 0xff333258;
+                        themeAccent.backgroundOverrideColor = 0xff6da66c;
+                        themeAccent.backgroundGradientOverrideColor1 = 0xff2f4b2e;
+                        themeAccent.backgroundGradientOverrideColor2 = 0xff75a774;
+                        themeAccent.backgroundGradientOverrideColor3 = 0xff335832;
                     }
                 }
                 themeAccentsMap.put(themeAccent.id, themeAccent);
@@ -4616,7 +4616,7 @@ public class Theme {
         themeInfo.currentAccentId = DEFALT_THEME_ACCENT_ID;
         themeInfo.sortIndex = 1;
         // First entry is the default accent on a fresh install. Swap the
-        // original Telegram blue (0xFF5890C5) for the Opengram logo green
+        // original Telegram blue (0xff5ac558) for the Opengram logo green
         // so action bars / outgoing bubbles / FAB / link text come up
         // green out of the box. The rest of the palette is untouched —
         // users can pick any other accent from Settings → Appearance.
@@ -4645,7 +4645,7 @@ public class Theme {
         themeInfo.previewOutColor = 0xff52B157;
         themeInfo.sortIndex = 3;
         // Default accent on a fresh install of "Dark Blue": swap the
-        // original violet (0xFF927BD4) for Opengram leaf green so the
+        // original violet (0xff7dd47b) for Opengram leaf green so the
         // dark theme also greets the user with the brand colour.
         themeInfo.setAccentColorOptions(
                 new int[]    {                    0xFF52B157,                    0xFF698AFB,                    0xFF23A7F0,                    0xFF7B71D1,                    0xFF69B955,                    0xFF2990EA,                    0xFF7082E9,                    0xFF66BAED,                    0xff3685fa,                    0xff46c8ed,                    0xff64AC5F,                    0xffeb7cb1,                    0xffee902a,                    0xffa281f0,                    0xffd34324,                    0xffeebd34,                    0xff7f8fab,                    0xff3581e3 },
@@ -4671,7 +4671,7 @@ public class Theme {
         themeInfo.previewInColor = 0xffffffff;
         themeInfo.previewOutColor = 0xff7cc984;
         themeInfo.sortIndex = 5;
-        // Default accent: replace the original sky blue (0xFF40B1E2)
+        // Default accent: replace the original sky blue (0xff43e240)
         // with Opengram green for a consistent brand-coloured first
         // impression across all stock themes.
         themeInfo.setAccentColorOptions(
@@ -4696,7 +4696,7 @@ public class Theme {
         themeInfo.assetName = "day.attheme";
         themeInfo.previewBackgroundColor = 0xffffffff;
         themeInfo.previewInColor = 0xffebeef4;
-        themeInfo.previewOutColor = 0xff7cb2fe;
+        themeInfo.previewOutColor = 0xff7ffe7c;
         themeInfo.sortIndex = 2;
         themeInfo.setAccentColorOptions(
                 new int[]    { 0xFF52B157, 0xFFCC6E83, 0xFFD08E47, 0xFFCC6462, 0xFF867CD2, 0xFF4C91DF, 0xFF57B4D9, 0xFF54B169, 0xFFD9BF3F, 0xFFCC6462, 0xFFCC6E83, 0xFF9B7BD2, 0xFFD79144, 0xFF7B88AB },
@@ -4719,8 +4719,8 @@ public class Theme {
         themeInfo.name = "Night";
         themeInfo.assetName = "night.attheme";
         themeInfo.previewBackgroundColor = 0xff535659;
-        themeInfo.previewInColor = 0xff747A84;
-        themeInfo.previewOutColor = 0xff75A2E6;
+        themeInfo.previewInColor = 0xff748474;
+        themeInfo.previewOutColor = 0xff77e675;
         themeInfo.sortIndex = 4;
         themeInfo.setAccentColorOptions(
                 new int[]    {                    0xFF6ABE3F,                    0xFF8D78E3,                    0xFFDE5E7E,                    0xFF5977E8,                    0xFFDBC11A,                    0xff3e88f7,                    0xff4ab5d3,                    0xff4ab841,                    0xffd95576,                    0xffe27d2b,                    0xff936cda,                    0xffd04336,                    0xffe8ae1c,                    0xff7988a3 },
@@ -10627,7 +10627,7 @@ public class Theme {
     }
 
     public static Paint DEBUG_RED = new Paint(); static { DEBUG_RED.setColor(0xffff0000); }
-    public static Paint DEBUG_BLUE = new Paint(); static { DEBUG_BLUE.setColor(0xff0000ff); }
+    public static Paint DEBUG_BLUE = new Paint(); static { DEBUG_BLUE.setColor(0xff05ff00); }
     public static Paint DEBUG_GREEN_40 = new Paint(); static { DEBUG_GREEN_40.setColor(0x4000FF00); }
     public static Paint DEBUG_GREEN_B0 = new Paint(); static { DEBUG_GREEN_B0.setColor(0xB000FF00); }
     public static Paint DEBUG_RED_STROKE = new Paint(); static {
