@@ -11,8 +11,17 @@ import java.util.HashMap;
 
 public class ThemeColors {
 
-    public static final int TELEGRAM_COLOR = 0xFF229AF0;        // -14509328
-    public static final int TELEGRAM_COLOR_TEXT = 0xFF298ACF;   // -14054705
+    // Opengram brand greens, drawn from the launcher logo:
+    //   - 0xFF52B157 — bright "leaf" green used as the main accent (action
+    //     bar, primary buttons, link text on light bg, FAB).
+    //   - 0xFF3D8542 — slightly darkened version used where the original
+    //     theme used TELEGRAM_COLOR_TEXT (a tone darker than the main
+    //     accent, for body-text links so they read against white).
+    // The deep green 0xFF213322 from the logo is too dark for body links —
+    // it's reserved for navigation/title backgrounds where contrast is
+    // already provided by white foreground.
+    public static final int TELEGRAM_COLOR = 0xFF52B157;        // Opengram leaf green
+    public static final int TELEGRAM_COLOR_TEXT = 0xFF3D8542;   // Opengram darker green
     public static final int DEFAULT_BLACK_TEXT = 0xFF1A1D21;   // -15065823
 
     private static SparseArray<String> colorKeysMap;
@@ -831,7 +840,12 @@ public class ThemeColors {
         defaultColors[key_botKeyboard_button_primary] = TELEGRAM_COLOR;
         defaultColors[key_botKeyboard_button_success] = 0xFF40b135;
 
-        defaultColors[key_telegram_color_dialogsLogo] = 0xFF168bdb;
+        // Tint colour applied via PorterDuff.MULTIPLY to the wordmark
+        // drawable in DialogsActivity / DialogStoriesCell. Use the
+        // Opengram brand green so the "Opengram" header reads green on
+        // light themes (drawables themselves are pure white, so the
+        // multiply gives back this colour).
+        defaultColors[key_telegram_color_dialogsLogo] = TELEGRAM_COLOR;
         defaultColors[key_telegram_color] = TELEGRAM_COLOR;
         defaultColors[key_telegram_color_text] = TELEGRAM_COLOR_TEXT;
 
