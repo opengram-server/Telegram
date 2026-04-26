@@ -103,6 +103,14 @@ android {
         minSdkVersion 21
         targetSdkVersion 35
 
+        // Pin the applicationId to our Opengram package. Without this
+        // the google-services plugin falls back to the module namespace
+        // (`org.telegram.messenger`) when picking a matching client out
+        // of google-services.json — and our JSON only contains
+        // me.opengra.messenger* clients, so the build dies with
+        // "No matching client found for package name 'org.telegram.messenger'".
+        applicationId = APP_PACKAGE
+
         vectorDrawables.generatedDensities = ['mdpi', 'hdpi', 'xhdpi', 'xxhdpi']
 
         multiDexEnabled true
