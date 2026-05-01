@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Opengram default icon background — solid dark green that matches the
+     outer ring of the launcher icon, so on square-mask launchers the
+     corners blend with the icon (instead of bleeding the legacy
+     Telegram blue gradient). -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android">
-    <gradient
-        android:type="linear"
-        android:angle="90"
-        android:startColor="#289AD1"
-        android:endColor="#38AEEB" />
+    <solid android:color="#213322" />
 </shape>

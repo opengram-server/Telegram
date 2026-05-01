@@ -3950,10 +3950,11 @@ public class PaymentFormActivity extends BaseFragment implements NotificationCen
                                 try {
                                     JSONObject jsonObject2 = new JSONObject(paymentForm.native_params.data);
                                     overrideSmartGlocalConnectionUrl = jsonObject2.getString("tokenize_url");
-                                    if (overrideSmartGlocalConnectionUrl != null && !(
-                                        overrideSmartGlocalConnectionUrl.startsWith("https://") &&
-                                        overrideSmartGlocalConnectionUrl.endsWith(".smart-glocal.com/cds/v1/tokenize/card")
-                                    )) {
+                                    // Opengram: drop the upstream
+                                    // ".smart-glocal.com/cds/v1/tokenize/card" suffix lock so the
+                                    // self-hosted tokenize endpoint can live on any https domain.
+                                    if (overrideSmartGlocalConnectionUrl != null
+                                        && !overrideSmartGlocalConnectionUrl.startsWith("https://")) {
                                         overrideSmartGlocalConnectionUrl = null;
                                     }
                                 } catch (Exception e) {}
