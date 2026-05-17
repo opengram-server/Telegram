@@ -245,6 +245,11 @@ public class ApplicationLoader extends Application {
 
         SharedConfig.loadConfig();
         SharedPrefsHelper.init(applicationContext);
+        // Тяну динамические адреса DC ДО первого ConnectionsManager.getInstance(...),
+        // чтобы первый MTProto-коннект пошёл уже на актуальные IP:port с конфиг-сервера.
+        // Синхронно, но с жёстким бюджетом 2000мс: при таймауте внутри применится
+        // bootstrap, так что инициализация не залипнет.
+        org.telegram.messenger.customserver.CustomServerManager.getInstance().startSync(2000);
         for (int a = 0; a < UserConfig.MAX_ACCOUNT_COUNT; a++) { //TODO improve account
             UserConfig.getInstance(a).loadConfig();
             MessagesController.getInstance(a);

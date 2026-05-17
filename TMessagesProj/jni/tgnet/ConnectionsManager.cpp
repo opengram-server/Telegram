@@ -3385,10 +3385,16 @@ void ConnectionsManager::updateDcSettings(uint32_t dcNum, bool workaround, bool 
                         datacenter = new Datacenter(instanceNum, iter.first);
                         datacenters[iter.first] = datacenter;
                     }
-                    datacenter->replaceAddresses(info->addressesIpv4, info->isCdn ? 8 : 0);
-                    datacenter->replaceAddresses(info->addressesIpv6, info->isCdn ? 9 : 1);
-                    datacenter->replaceAddresses(info->addressesIpv4Download, info->isCdn ? 10 : 2);
-                    datacenter->replaceAddresses(info->addressesIpv6Download, info->isCdn ? 11 : 3);
+                    // Opengram: если адреса заданы динамически через CustomServerManager,
+                    // НЕ позволяю help.getConfig перезатереть их адресами от Telegram.
+                    // Остальную логику (создание DC, movingToDatacenterId, saveConfig)
+                    // оставляю как есть.
+                    if (!customServerMode) {
+                        datacenter->replaceAddresses(info->addressesIpv4, info->isCdn ? 8 : 0);
+                        datacenter->replaceAddresses(info->addressesIpv6, info->isCdn ? 9 : 1);
+                        datacenter->replaceAddresses(info->addressesIpv4Download, info->isCdn ? 10 : 2);
+                        datacenter->replaceAddresses(info->addressesIpv6Download, info->isCdn ? 11 : 3);
+                    }
                     if (iter.first == movingToDatacenterId) {
                         movingToDatacenterId = DEFAULT_DATACENTER_ID;
                         moveToDatacenter(iter.first);
@@ -3465,6 +3471,9 @@ void ConnectionsManager::authorizedOnMovingDatacenter() {
 
 void ConnectionsManager::applyDatacenterAddress(uint32_t datacenterId, std::string ipAddress, uint32_t port) {
     scheduleTask([&, datacenterId, ipAddress, port] {
+        // Opengram: адреса пришли динамически из CustomServerManager. Включаю
+        // режим, в котором help.getConfig не перезатрёт их (см. updateDcSettings).
+        customServerMode = true;
         Datacenter *datacenter = getDatacenterWithId(datacenterId);
         if (datacenter != nullptr) {
             std::vector<TcpAddress> addresses;

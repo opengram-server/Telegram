@@ -165,6 +165,10 @@ private:
     bool updatingDcSettingsAgain = false;
     uint32_t updatingDcSettingsAgainDcNum = 0;
     bool updatingDcSettingsWorkaround = false;
+    // Opengram: ставлю true, когда адреса DC пришли динамически из CustomServerManager
+    // (через applyDatacenterAddress). Пока он true — help.getConfig НЕ перезатирает
+    // эти адреса, чтобы смена IP сервера не требовала пересборки клиента.
+    bool customServerMode = false;
     int32_t disconnectTimeoutAmount = 0;
     bool requestingSecondAddressByTlsHashMismatch = false;
     int32_t requestingSecondAddress = 0;
